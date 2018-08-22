@@ -1,4 +1,8 @@
 import * as t from '@/store/types'
+import { Auth, Logger } from 'aws-amplify'
+import { MIC_USERNAME, MIC_PASSWORD } from '@/config'
+
+const logger = new Logger('StoreApp')
 
 const state = {
   inited: false,
@@ -8,18 +12,37 @@ const state = {
 const mutations = {
   [t.APP_CLEAN] (state) {
     state.user = null
-    state.drawer = []
+  },
+  [t.APP_SET_USER] (state, user) {
+    state.user = user
   }
 }
 
 const actions = {
-  /* Init app by logging in using Cognito.
+  /* Init app by checking if user is authenticated,
+   * and authenticate if not.
    */
-  async init () {
+  async init ({ commit, dispatch }) {
     try {
+      await Auth.currentAuthenticatedUser()
+      commit(t.APP_SET_USER, await Auth.currentUserInfo())
 
+    // Not authenticated
     } catch (e) {
+      dispatch('authenticate')
+    }
+  },
 
+  /* Authenticate a user.
+   */
+  async authenticate ({ commit }) {
+    try {
+      await Auth.signIn(MIC_USERNAME, MIC_PASSWORD)
+      commit(t.APP_SET_USER, await Auth.currentUserInfo())
+
+    // Authentication failed, app cannot start
+    } catch (e) {
+      logger.error('could not authorize', e)
     }
   }
 }

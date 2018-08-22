@@ -1,5 +1,6 @@
 <template lang="pug">
 #map
+  span Hello, World!
 </template>
 
 <script>

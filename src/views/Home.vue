@@ -1,14 +1,13 @@
 <template lang="pug">
 #view-home
-  map
-    router-view
+  c-map
 </template>
 
 <script>
-import Map from '@/components/Map'
+import CMap from '@/components/Map'
 
 export default {
   name: 'Home',
-  components: { Map }
+  components: { CMap }
 }
 </script>

@@ -13,7 +13,7 @@ export default {
   name: 'App',
   components: { UiSnackbar },
   mounted () {
-    
+    this.$store.dispatch('App/init')
   }
 }
 </script>

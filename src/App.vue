@@ -12,8 +12,14 @@ import UiSnackbar from '@/components/ui/Snackbar'
 export default {
   name: 'App',
   components: { UiSnackbar },
-  mounted () {
-    this.$store.dispatch('App/init')
+  async mounted () {
+    await this.$store.dispatch('App/init')
+
+    try {
+      await this.$store.dispatch('Api/getThings')
+    } catch (e) {
+      this.handleError(e)
+    }
   }
 }
 </script>

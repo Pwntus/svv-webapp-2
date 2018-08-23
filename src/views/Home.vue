@@ -1,13 +1,13 @@
 <template lang="pug">
 #view-home
-  c-map
+  svv-map
 </template>
 
 <script>
-import CMap from '@/components/Map'
+import SvvMap from '@/components/svv/Map'
 
 export default {
   name: 'Home',
-  components: { CMap }
+  components: { SvvMap }
 }
 </script>

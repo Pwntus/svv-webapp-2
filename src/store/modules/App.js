@@ -15,6 +15,9 @@ const mutations = {
   },
   [t.APP_SET_USER] (state, user) {
     state.user = user
+  },
+  [t.APP_SET_INITED] (state, value) {
+    state.inited = value
   }
 }
 
@@ -26,6 +29,7 @@ const actions = {
     try {
       await Auth.currentAuthenticatedUser()
       commit(t.APP_SET_USER, await Auth.currentUserInfo())
+      commit(t.APP_SET_INITED, true)
 
     // Not authenticated
     } catch (e) {
@@ -39,6 +43,7 @@ const actions = {
     try {
       await Auth.signIn(MIC_USERNAME, MIC_PASSWORD)
       commit(t.APP_SET_USER, await Auth.currentUserInfo())
+      commit(t.APP_SET_INITED, true)
 
     // Authentication failed, app cannot start
     } catch (e) {

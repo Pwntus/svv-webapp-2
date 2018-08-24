@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import { mapGetters } from 'vuex'
 
 const eventBus = new Vue()
 
@@ -6,6 +7,11 @@ Vue.mixin({
   data: () => ({
     eventBus
   }),
+  computed: {
+    ...mapGetters({
+      AppMapThings: 'Api/mapThings'
+    })
+  },
   methods: {
     handleError (e) {
       const { message } = e

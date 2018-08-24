@@ -14,10 +14,10 @@ export default {
       throw e
     }
   },
-  async get (path, body) {
+  async get (path, queryStringParameters) {
     try {
       return await API.get(API_NAME, path, {
-        body,
+        queryStringParameters,
         headers: {
           'x-api-key': 'oy0yDJfZdQkQ52LLCugD6IQNiC8l1Xcacm89kg44'
         }

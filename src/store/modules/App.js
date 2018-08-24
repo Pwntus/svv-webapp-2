@@ -1,6 +1,6 @@
-import * as t from '@/store/types'
 import { Auth, Logger } from 'aws-amplify'
 import { MIC_USERNAME, MIC_PASSWORD } from '@/config'
+import * as t from '@/store/types'
 
 const logger = new Logger('StoreApp')
 

@@ -5,18 +5,20 @@
 
 <script>
 import L from 'leaflet'
+import 'leaflet-geometryutil'
 import 'leaflet/dist/leaflet.css'
-import rawData from '@/assets/route/map.geojson'
+import rawData from '@/assets/route/map2.geojson'
 import 'Leaflet.MultiOptionsPolyline'
+import { MAX_GPS_ERROR, WALK_N_STEPS, DEFAULT_MAP_CENTER } from '@/config'
 
 export default {
   name: 'SvvMap',
   data: () => ({
     map: null,
-    markers: null,
     route: null,
-    zoom: 10,
-    center: new L.LatLng(69.24, 20.47)
+    routeData: null,
+    zoom: 11,
+    dataUrl: null
   }),
   computed: {
     layer () {
@@ -24,63 +26,138 @@ export default {
     }
   },
   watch: {
-    AppMapThings (markers) {
-      this.updateMarkers(markers)
-    }
-  },
-  methods: {
-    updateMarkers (markers) {
-      // Remove any previous markers
-      this.markers.clearLayers()
+    ApiMapThings (things) {
+      // Create new raw route data
+      let newRawData = JSON.parse(JSON.stringify(rawData))
 
-      for (let marker of markers) {
+      for (let thing of things) {
         try {
-          // Create new marker and add to markers
-          const { pos } = marker.shadow.state.reported
+          // Find lat, lng of Thing GPS pos
+          const { pos, tmp, hum } = thing.state
           const [lat, lng] = pos.split(',')
-          const newMarker = L.circleMarker(new L.LatLng(lat, lng), {
-            radius: 3,
-            stroke: false,
-            fillColor: '#FF0000',
-            fillOpacity: 1,
-            interactive: false
-          })
 
-          this.markers.addLayer(newMarker)
+          // Find closest layer on route blueprint
+          const closestLayer = L.GeometryUtil.closestLayer(this.map, this.route.getLayers(), [lat, lng])
+
+          // Skip if Thing GPS pos is too far away
+          if (closestLayer.distance > MAX_GPS_ERROR)
+            continue
+
+          // Iterate route layers
+          for (let routeLayer of this.route.getLayers()) {
+            // If found closest Thing layer equals route layer,
+            // change route layer z-value accordingly.
+            if (closestLayer.layer === routeLayer) {
+              try {
+                const { id } = routeLayer.feature.properties
+                let rawLayer = newRawData[id]
+                rawLayer.properties.thing = thing
+                rawLayer.properties.z = 15
+                rawLayer.properties.tmp = tmp
+                rawLayer.properties.hum = hum
+                rawLayer.properties.opacity = 1
+
+                // Walk backward
+                let count = 0
+                let limit = (id - WALK_N_STEPS < 0) ? 0 : id - WALK_N_STEPS
+                for (let i = id - 1; i >= limit; i--) {
+                  let rawLayerBack = newRawData[i]
+                  rawLayerBack.properties.thing = thing
+                  rawLayerBack.properties.z = 15
+                  rawLayerBack.properties.tmp = tmp
+                  rawLayerBack.properties.hum = hum
+
+                  let opacity = 1 - (count / WALK_N_STEPS)
+                  if (rawLayerBack.properties.hasOwnProperty('opacity')) {
+                    if (rawLayerBack.properties.opacity < opacity)
+                      rawLayerBack.properties.opacity = opacity
+                  } else {
+                    rawLayerBack.properties.opacity = opacity
+                  }
+
+                  count += 1
+                }
+
+                // Walk forward
+                count = 0
+                limit = (id + WALK_N_STEPS > newRawData.length - 1) ? newRawData.length - 1 : id + WALK_N_STEPS
+                for (let i = id + 1; i <= limit; i++) {
+                  let rawLayerBack = newRawData[i]
+                  rawLayerBack.properties.thing = thing
+                  rawLayerBack.properties.z = 15
+                  rawLayerBack.properties.tmp = tmp
+                  rawLayerBack.properties.hum = hum
+                  rawLayerBack.properties.opacity = 1 - (count / WALK_N_STEPS)
+
+                  let opacity = 1 - (count / WALK_N_STEPS)
+                  if (rawLayerBack.properties.hasOwnProperty('opacity')) {
+                    if (rawLayerBack.properties.opacity < opacity)
+                      rawLayerBack.properties.opacity = opacity
+                  } else {
+                    rawLayerBack.properties.opacity = opacity
+                  }
+
+                  count += 1
+                }
+              } catch (e) {}
+            }
+          }
         } catch (e) {}
       }
 
-      // Debug marker
-      const newMarker = L.circleMarker(new L.LatLng(69.263906, 20.579927), {
-        radius: 3,
-        stroke: false,
-        fillColor: '#FF0000',
-        fillOpacity: 1,
-        interactive: false
-      })
+      this.route.clearLayers()
+      this.route.addData(newRawData)
+    }
+  },
+  methods: {
+    getWeight (properties) {
+      let { z } = properties
+      return z === 0 ? 5 : 5
+    },
+    getLineCap (properties) {
+      let { z } = properties
+      return z === 0 ? 'round' : 'round'
+    },
+    getColor (properties) {
+      let { z, opacity } = properties
 
-      this.markers.addLayer(newMarker)
+      if (z < 0) {
+        return `rgba(0, 0, 255, ${opacity})`
+      } else if (z > 0) {
+        return `rgba(255, 0, 0, ${opacity})`
+      } else {
+        return 'rgba(0,0,0,0)'
+      }
     }
   },
   mounted () {
     // Init map
     this.map = L.map(this.$refs.map, {
-      center: this.center,
+      center: DEFAULT_MAP_CENTER,
       zoom: this.zoom,
       layers: this.layer,
       attributionControl: false,
-      zoomControl: false,
-      dragging: !L.Browser.mobile
+      zoomControl: false
     })
 
-    // Markers
-    this.markers = L.featureGroup().addTo(this.map)
-
-    // Route
     this.route = L.geoJSON(rawData, {
       style: feature => {
         return {
-          color: '#ff9604'
+          weight: this.getWeight(feature.properties),
+          lineCap: this.getLineCap(feature.properties),
+          color: this.getColor(feature.properties) // '#ff9604' = SVV Orange
+        }
+      },
+      onEachFeature: (feature, layer) => {
+        if (feature.properties.hasOwnProperty('thing')) {
+          layer.bindTooltip(`
+            <h1>${feature.properties.thing.thingName}</h1>
+            <p>
+              Temperature: <b>${feature.properties.tmp}°C</b><br>
+              Humidity: <b>${feature.properties.hum}%</b>
+            </p>`, {
+            direction: 'top'
+          })
         }
       }
     }).addTo(this.map)

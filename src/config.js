@@ -4,6 +4,9 @@ export const API_NAME = 'StartIoT'
 export const MIC_USERNAME = ''
 export const MIC_PASSWORD = ''
 export const MIC_THING_TYPE = 191
+export const MAX_GPS_ERROR = 20 // In meters
+export const WALK_N_STEPS = 10 // Number of nodes to fade color
+export const DEFAULT_MAP_CENTER = [69.24, 20.47]
 
 export const AWS_EXPORTS = {
   Auth: {

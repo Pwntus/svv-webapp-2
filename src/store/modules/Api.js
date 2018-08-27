@@ -1,5 +1,4 @@
 import { Logger } from 'aws-amplify'
-import * as _ from 'lodash'
 import { MIC_THING_TYPE } from '@/config'
 import * as t from '@/store/types'
 import Api from '@/lib/api'
@@ -16,14 +15,6 @@ const mutations = {
   },
   [t.API_SET_THINGS] (state, things) {
     state.things = things
-  },
-  [t.API_SET_THING_SHADOW] (state, thing) {
-    try {
-      const { thingName, shadow } = thing
-      let t = state.things.find(thing => thing.thingName === thingName)
-      t.shadow = shadow
-      state.things = _.cloneDeep(state.things)
-    } catch (e) {}
   }
 }
 
@@ -37,31 +28,17 @@ const actions = {
         query: {
           size: 1000,
           from: 0,
-          query: { bool: { filter: { term: { thingType: MIC_THING_TYPE } } } }
+          query: { bool: {
+            must: [ { range: { 'state.tcxn.connection_status': { gt: 1 } } } ],
+            filter: { term: { thingType: MIC_THING_TYPE } } } }
         }
       }
       const result = await Api.post('/things/find', body)
       const filtered = result.hits.hits.map(hit => hit._source)
       commit(t.API_SET_THINGS, filtered)
-      dispatch('getThingsShadows')
     } catch (e) {
       logger.error('could not fetch Things', e)
       throw e
-    }
-  },
-
-  /* Load shadow of Things.
-   */
-  async getThingsShadows ({ commit, getters }) {
-    for (let thing of getters.things) {
-      const { thingName, thingType } = thing
-
-      try {
-        commit(t.API_SET_THING_SHADOW, await Api.get('/things', { thingName, thingType }))
-      } catch (e) {
-        logger.error('could not fetch Thing shadows', e)
-        throw e
-      }
     }
   }
 }
@@ -71,13 +48,48 @@ const getters = {
     return state.things
   },
   mapThings: (state) => {
-    return state.things.map(thing => {
+    // Debug Things
+    let things = JSON.parse(JSON.stringify(state.things))
+    things.push({
+      thingName: '000042',
+      state: {
+        tmp: 42,
+        hum: 13,
+        pos: '69.263644,20.573962'
+      }
+    })
+    things.push({
+      thingName: '000043',
+      state: {
+        tmp: 43,
+        hum: 14,
+        pos: '69.252629,20.589964'
+      }
+    })
+    things.push({
+      thingName: '000044',
+      state: {
+        tmp: -10,
+        hum: 10,
+        pos: '69.374330,20.293395'
+      }
+    })
+    things.push({
+      thingName: '000044',
+      state: {
+        tmp: -15,
+        hum: 5,
+        pos: '69.114180,20.749384'
+      }
+    })
+
+    return things.map(thing => {
       return {
         thingName: thing.thingName,
         label: thing.label,
-        shadow: thing.shadow
+        state: thing.state
       }
-    }).filter(thing => typeof thing.shadow !== 'undefined')
+    }).filter(thing => typeof thing.state !== 'undefined')
   }
 }
 

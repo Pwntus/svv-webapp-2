@@ -33,7 +33,7 @@ const actions = {
 
     // Not authenticated
     } catch (e) {
-      dispatch('authenticate')
+      await dispatch('authenticate')
     }
   },
 

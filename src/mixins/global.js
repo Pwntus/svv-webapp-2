@@ -9,7 +9,7 @@ Vue.mixin({
   }),
   computed: {
     ...mapGetters({
-      AppMapThings: 'Api/mapThings'
+      ApiMapThings: 'Api/mapThings'
     })
   },
   methods: {
